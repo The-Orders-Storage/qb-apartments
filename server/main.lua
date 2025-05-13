@@ -82,12 +82,37 @@ RegisterNetEvent('apartments:server:CreateApartment', function(type, label, firs
     TriggerClientEvent('apartments:client:SetHomeBlip', src, type)
 end)
 
+-- ox_inventory compatibility
+local ox_inventory = nil
+if GetResourceState('ox_inventory') ~= 'missing' then
+    ox_inventory = exports.ox_inventory
+    RegisterNetEvent('qb-apartments:server:RegisterStash', function(currentApartmentId, currentApartmentLabel)
+        ox_inventory:RegisterStash(currentApartmentId, currentApartmentLabel and 'Stash - '..currentApartmentLabel..' Apartment' or 'Apartment Stash', 100, 1000000)
+    end)
+end
+
+--[[
 RegisterNetEvent('apartments:server:UpdateApartment', function(type, label)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     MySQL.update('UPDATE apartments SET type = ?, label = ? WHERE citizenid = ?', { type, label, Player.PlayerData.citizenid })
     TriggerClientEvent('QBCore:Notify', src, Lang:t('success.changed_apart'))
     TriggerClientEvent('apartments:client:SetHomeBlip', src, type)
+end)
+--]]
+
+RegisterNetEvent('apartments:server:UpdateApartment', function(type, label)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    MySQL.update('UPDATE apartments SET type = ?, label = ? WHERE citizenid = ?', { type, label, Player.PlayerData.citizenid })
+    TriggerClientEvent('QBCore:Notify', src, Lang:t('success.changed_apart'))
+    TriggerClientEvent("apartments:client:SetHomeBlip", src, type)
+    if ox_inventory then
+        local result = MySQL.query.await('SELECT * FROM apartments WHERE citizenid = ?', { Player.PlayerData.citizenid })
+        if result[1] ~= nil then
+            TriggerEvent('qb-apartments:server:RegisterStash', result[1].name, label) -- rename the stash name in case of apartment change
+        end
+    end
 end)
 
 RegisterNetEvent('apartments:server:RingDoor', function(apartmentId, apartment)

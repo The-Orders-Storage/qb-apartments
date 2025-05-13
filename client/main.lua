@@ -20,6 +20,12 @@ local IsInsideStashZone = false
 local IsInsideOutfitsZone = false
 local IsInsideLogoutZone = false
 
+-- ox_inventory compatibility (tweak provided from Kamaryn) https://discord.com/invite/F7cuThhSpT
+local ox_inventory = nil
+if GetResourceState('ox_inventory') ~= 'missing' then
+    ox_inventory = exports.ox_inventory
+end
+
 -- polyzone integration
 
 local function OpenEntranceMenu()
@@ -687,10 +693,27 @@ RegisterNetEvent('apartments:client:LeaveApartment', function()
     LeaveApartment(ClosestHouse)
 end)
 
+--[[ -- qb-inventory compatibility
 RegisterNetEvent('apartments:client:OpenStash', function()
     if CurrentApartment then
         TriggerServerEvent('InteractSound_SV:PlayOnSource', 'StashOpen', 0.4)
         TriggerServerEvent('apartments:server:openStash', CurrentApartment)
+    end
+end)
+--]]
+
+RegisterNetEvent('apartments:client:OpenStash', function()
+    if CurrentApartment ~= nil then
+        TriggerServerEvent("InteractSound_SV:PlayOnSource", "StashOpen", 0.4)
+        if not ox_inventory then
+            TriggerServerEvent("inventory:server:OpenInventory", "stash", CurrentApartment)
+            TriggerEvent("inventory:client:SetCurrentStash", CurrentApartment)
+        else
+            if not ox_inventory:openInventory('stash', CurrentApartment) then
+                TriggerServerEvent('qb-apartments:server:RegisterStash', CurrentApartment, Apartments.Locations[ClosestHouse].label)
+                ox_inventory:openInventory('stash', CurrentApartment)
+            end
+        end
     end
 end)
 
